@@ -77,9 +77,10 @@ trait SamlAuth
      * should only be called in case a saml request is also included.
      *
      * @param  \Illuminate\Http\Request  $request
+     * @param string $guard
      * @return void
      */
-    public function handleSamlLoginRequest($request)
+    public function handleSamlLoginRequest($request, $guard = null)
     {
         // Store RelayState to session if provided
         if (!empty($request->input('RelayState'))) {
@@ -97,7 +98,7 @@ trait SamlAuth
             $authnRequest = new \LightSaml\Model\Protocol\AuthnRequest();
             $authnRequest->deserialize($deserializationContext->getDocument()->firstChild, $deserializationContext);
             // Generate the saml response (saml authentication attempt)
-            $this->buildSamlResponse($authnRequest, $request);
+            $this->buildSamlResponse($authnRequest, $request, $guard);
         }
     }
 
@@ -105,11 +106,12 @@ trait SamlAuth
      * Make a saml authentication attempt by building the saml response.
      *
      * @param  \Illuminate\Http\Request  $request
+     * @param string $guard
      * @return \Illuminate\Http\RedirectResponse
      * @see https://www.lightsaml.com/LightSAML-Core/Cookbook/How-to-make-Response/
      * @see https://imbringingsyntaxback.com/implementing-a-saml-idp-with-laravel/
      */
-    protected function buildSamlResponse($authnRequest, $request)
+    protected function buildSamlResponse($authnRequest, $request, $guard = null)
     {
         // Get corresponding destination and issuer configuration from SAML config file for assertion URL
         // Note: Simplest way to determine the correct assertion URL is a short debug output on first run
@@ -150,8 +152,8 @@ trait SamlAuth
         // We are responding with both the email and the username as attributes
         // TODO: Add here other attributes, e.g. groups / roles / permissions
         $roles = array();
-        if (\Auth::check()) {
-            $user   = \Auth::user();
+        if (\Auth::guard($guard)->check()) {
+            $user   = \Auth::guard($guard)->user();
             $nameID = $this->getNameId($user, $authnRequest);
             $email  = $user->email;
             $name   = $user->name;
